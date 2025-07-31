@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "CarryNote",
+    "slug": "carrynote",
+    "icon": "./assets/icon-1024.png",
+    "splash": {
+      "image": "./assets/splash-2048.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F3A2F"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-adaptive-foreground-1024.png",
+        "backgroundColor": "#0F3A2F"
+      }
+    },
+    "ios": { "supportsTablet": true }
+  }
+}
