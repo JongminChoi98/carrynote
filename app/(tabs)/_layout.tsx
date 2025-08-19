@@ -14,15 +14,23 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="example"
+        name="history"
         options={{
-          title: "예시",
+          title: "히스토리",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="bulb-outline" size={size} color={color} />
+            <Ionicons name="book-outline" size={size} color={color} />
           ),
         }}
       />
-      {/* 새 탭을 추가하려면 (tabs) 폴더에 파일만 만들고 여기 한 줄 추가 */}
+      <Tabs.Screen
+        name="setting"
+        options={{
+          title: "환경설정",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
