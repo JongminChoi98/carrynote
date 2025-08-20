@@ -9,6 +9,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "expo": "~53.0.20",
     "expo-router": "~5.1.4",
     "expo-splash-screen": "~0.30.10",

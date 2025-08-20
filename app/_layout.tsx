@@ -2,7 +2,9 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import { initClubs } from "../src/db/clubs";
 import { getHasOnboarded, initDb } from "../src/db/settings";
+import { initShots } from "../src/db/shots";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -15,6 +17,8 @@ export default function RootLayout() {
     (async () => {
       // 1) DB 준비
       await initDb();
+      await initClubs();
+      await initShots();
 
       // 2) 온보딩 여부 확인
       const onboarded = await getHasOnboarded();

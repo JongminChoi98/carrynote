@@ -14,6 +14,16 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="shot-new"
+        options={{
+          title: "샷",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="golf-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="history"
         options={{
           title: "히스토리",
