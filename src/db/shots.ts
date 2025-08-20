@@ -91,3 +91,44 @@ export async function getRecentShots(limit = 30): Promise<ShotRow[]> {
   );
   return rows;
 }
+
+export async function getShots(params: {
+  limit: number;
+  offset?: number;
+  clubId?: number | null;
+}): Promise<ShotRow[]> {
+  const { limit, offset = 0, clubId = null } = params;
+
+  if (clubId == null) {
+    // 전체
+    return await db.getAllAsync<ShotRow>(
+      `
+        SELECT s.id, s.clubId, s.carry_m, s.total_m, s.ball_mps, s.club_mps, s.smash, s.createdAt,
+               c.label as clubLabel
+        FROM shots s
+        JOIN clubs c ON c.id = s.clubId
+        ORDER BY s.createdAt DESC
+        LIMIT ? OFFSET ?;
+        `,
+      [limit, offset]
+    );
+  } else {
+    // 특정 클럽만
+    return await db.getAllAsync<ShotRow>(
+      `
+        SELECT s.id, s.clubId, s.carry_m, s.total_m, s.ball_mps, s.club_mps, s.smash, s.createdAt,
+               c.label as clubLabel
+        FROM shots s
+        JOIN clubs c ON c.id = s.clubId
+        WHERE s.clubId = ?
+        ORDER BY s.createdAt DESC
+        LIMIT ? OFFSET ?;
+        `,
+      [clubId, limit, offset]
+    );
+  }
+}
+
+export async function deleteShot(id: number): Promise<void> {
+  await db.runAsync(`DELETE FROM shots WHERE id = ?;`, [id]);
+}
