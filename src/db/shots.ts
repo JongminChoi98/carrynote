@@ -132,3 +132,78 @@ export async function getShots(params: {
 export async function deleteShot(id: number): Promise<void> {
   await db.runAsync(`DELETE FROM shots WHERE id = ?;`, [id]);
 }
+
+export type ShotSI = {
+  id: number;
+  clubId: number;
+  carry_m: number;
+  total_m: number;
+  ball_mps: number | null;
+  club_mps: number | null;
+  smash: number | null;
+  createdAt: number;
+};
+
+export async function getShotById(id: number): Promise<ShotSI | null> {
+  const row = await db.getFirstAsync<ShotSI>(
+    `SELECT id, clubId, carry_m, total_m, ball_mps, club_mps, smash, createdAt
+     FROM shots WHERE id = ? LIMIT 1;`,
+    [id]
+  );
+  return row ?? null;
+}
+
+export type UpdateShotInput = {
+  carry: number;
+  total: number;
+  distanceUnit: "yard" | "meter";
+  ballSpeed?: number | null;
+  clubSpeed?: number | null;
+  speedUnit: "mph" | "mps";
+  clubId?: number; // 클럽 변경 허용 (선택)
+};
+
+export async function updateShot(
+  id: number,
+  input: UpdateShotInput
+): Promise<void> {
+  const carry_m =
+    input.distanceUnit === "yard" ? yd_to_m(input.carry) : input.carry;
+  const total_m =
+    input.distanceUnit === "yard" ? yd_to_m(input.total) : input.total;
+
+  const ball_mps =
+    input.ballSpeed == null
+      ? null
+      : input.speedUnit === "mph"
+      ? mph_to_mps(input.ballSpeed)
+      : input.ballSpeed;
+
+  const club_mps =
+    input.clubSpeed == null
+      ? null
+      : input.speedUnit === "mph"
+      ? mph_to_mps(input.clubSpeed)
+      : input.clubSpeed;
+
+  const smash =
+    ball_mps != null && club_mps != null && club_mps > 0
+      ? Math.round((ball_mps / club_mps) * 100) / 100
+      : null;
+
+  if (input.clubId != null) {
+    await db.runAsync(
+      `UPDATE shots
+       SET clubId = ?, carry_m = ?, total_m = ?, ball_mps = ?, club_mps = ?, smash = ?
+       WHERE id = ?;`,
+      [input.clubId, carry_m, total_m, ball_mps, club_mps, smash, id]
+    );
+  } else {
+    await db.runAsync(
+      `UPDATE shots
+       SET carry_m = ?, total_m = ?, ball_mps = ?, club_mps = ?, smash = ?
+       WHERE id = ?;`,
+      [carry_m, total_m, ball_mps, club_mps, smash, id]
+    );
+  }
+}

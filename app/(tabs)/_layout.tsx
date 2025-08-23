@@ -41,6 +41,7 @@ export default function TabsLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="shot/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

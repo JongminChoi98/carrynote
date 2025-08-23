@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -344,7 +344,8 @@ export default function HistoryScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <View
+          <Pressable
+            onPress={() => router.push(`/shot/${item.id}`)}
             style={{
               borderWidth: 1,
               borderColor: "#E5E7EB",
@@ -355,59 +356,73 @@ export default function HistoryScreen() {
           >
             <View
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                marginBottom: 4,
+                borderWidth: 1,
+                borderColor: "#E5E7EB",
+                borderRadius: 12,
+                padding: 14,
+                backgroundColor: "#FFFFFF",
               }}
             >
-              <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                {item.club}
-              </Text>
-
               <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 4,
+                }}
               >
-                <Text style={{ color: "#6B7280" }}>{item.when}</Text>
-                <Pressable
-                  onPress={() => onDeleteItem(item.id)}
+                <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                  {item.club}
+                </Text>
+
+                <View
                   style={{
-                    paddingVertical: 4,
-                    paddingHorizontal: 8,
-                    borderRadius: 6,
-                    backgroundColor: "#FEE2E2", // 연한 빨강
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
                   }}
                 >
-                  <Text style={{ color: "#991B1B", fontWeight: "700" }}>
-                    삭제
-                  </Text>
-                </Pressable>
+                  <Text style={{ color: "#6B7280" }}>{item.when}</Text>
+                  <Pressable
+                    onPress={() => onDeleteItem(item.id)}
+                    style={{
+                      paddingVertical: 4,
+                      paddingHorizontal: 8,
+                      borderRadius: 6,
+                      backgroundColor: "#FEE2E2", // 연한 빨강
+                    }}
+                  >
+                    <Text style={{ color: "#991B1B", fontWeight: "700" }}>
+                      삭제
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
+
+              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                <Text style={{ fontWeight: "700" }}>캐리</Text>
+                <Text>{` ${item.carryNum} ${
+                  distanceUnit === "yard" ? "yd" : "m"
+                }`}</Text>
+                <Text style={{ fontWeight: "700", marginLeft: 12 }}>토탈</Text>
+                <Text>{` ${item.totalNum} ${
+                  distanceUnit === "yard" ? "yd" : "m"
+                }`}</Text>
+              </View>
+
+              {item.speeds ? (
+                <Text style={{ color: "#374151", marginTop: 4 }}>
+                  {item.speeds}
+                </Text>
+              ) : null}
+
+              {item.smash ? (
+                <Text style={{ color: "#374151", marginTop: 2 }}>
+                  스매시 팩터:{" "}
+                  <Text style={{ fontWeight: "700" }}>{item.smash}</Text>
+                </Text>
+              ) : null}
             </View>
-
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              <Text style={{ fontWeight: "700" }}>캐리</Text>
-              <Text>{` ${item.carryNum} ${
-                distanceUnit === "yard" ? "yd" : "m"
-              }`}</Text>
-              <Text style={{ fontWeight: "700", marginLeft: 12 }}>토탈</Text>
-              <Text>{` ${item.totalNum} ${
-                distanceUnit === "yard" ? "yd" : "m"
-              }`}</Text>
-            </View>
-
-            {item.speeds ? (
-              <Text style={{ color: "#374151", marginTop: 4 }}>
-                {item.speeds}
-              </Text>
-            ) : null}
-
-            {item.smash ? (
-              <Text style={{ color: "#374151", marginTop: 2 }}>
-                스매시 팩터:{" "}
-                <Text style={{ fontWeight: "700" }}>{item.smash}</Text>
-              </Text>
-            ) : null}
-          </View>
+          </Pressable>
         )}
       />
     </View>
