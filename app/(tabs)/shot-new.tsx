@@ -1,4 +1,4 @@
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   Alert,
@@ -110,6 +110,29 @@ export default function ShotNewScreen() {
         <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 6 }}>
           샷 입력
         </Text>
+
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 6 }}>
+            샷 입력
+          </Text>
+          <Pressable
+            onPress={() => router.push("/clubs/new")}
+            style={{
+              backgroundColor: "#E5E7EB",
+              paddingVertical: 8,
+              paddingHorizontal: 10,
+              borderRadius: 8,
+            }}
+          >
+            <Text style={{ fontWeight: "700" }}>클럽 추가</Text>
+          </Pressable>
+        </View>
 
         {/* 클럽 선택 */}
         {clubOptions.length > 0 ? (

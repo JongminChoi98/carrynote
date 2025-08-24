@@ -1,7 +1,8 @@
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import ChoiceGroup from "../../src/components/ChoiceGroup";
+import { getAllClubs, type ClubRow } from "../../src/db/clubs";
 import {
   getUnitPrefs,
   setHasOnboarded,
@@ -15,16 +16,30 @@ export default function SettingScreen() {
   const [speed, setSpeed] = useState<SpeedUnit>("mph");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [clubs, setClubs] = useState<ClubRow[]>([]);
 
-  // 현재 저장된 단위 불러오기
+  // 최초 로드: 단위 + 초기 클럽 목록
   useEffect(() => {
     (async () => {
       const prefs = await getUnitPrefs();
       setDistance(prefs.distance);
       setSpeed(prefs.speed);
+      setClubs(await getAllClubs());
       setLoading(false);
     })();
   }, []);
+
+  // ✅ 포커스가 돌아올 때마다 클럽 목록 새로고침
+  const refreshClubs = useCallback(async () => {
+    setClubs(await getAllClubs());
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // settings 화면이 다시 보이면 리프레시
+      refreshClubs();
+    }, [refreshClubs])
+  );
 
   const saveUnits = async () => {
     if (saving) return;
@@ -44,8 +59,8 @@ export default function SettingScreen() {
   };
 
   const resetOnboarding = async () => {
-    await setHasOnboarded(false); // 플래그를 false로 변경
-    router.replace("/onboarding"); // 온보딩 화면으로 이동
+    await setHasOnboarded(false);
+    router.replace("/onboarding");
   };
 
   if (loading) {
@@ -101,6 +116,87 @@ export default function SettingScreen() {
           {saving ? "저장 중..." : "단위 저장"}
         </Text>
       </Pressable>
+
+      {/* ========== 클럽 관리 섹션 ========== */}
+      <View
+        style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 }}
+      />
+      <Text style={{ fontSize: 18, fontWeight: "800" }}>내 클럽 관리</Text>
+
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: "#6B7280" }}>
+          추가/편집은 여기서도 바로 할 수 있어요.
+        </Text>
+        <Pressable
+          onPress={() => {
+            // ❌ await 필요 없음: push는 Promise를 반환하지 않아요.
+            router.push("/clubs/new");
+            // 저장은 새 화면에서 이뤄지므로, 여기서 즉시 refresh하지 말고
+            // ✅ 돌아왔을 때 useFocusEffect로 자동 새로고침
+          }}
+          style={{
+            backgroundColor: "#2E7D32",
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 8,
+          }}
+        >
+          <Text style={{ color: "#fff", fontWeight: "700" }}>클럽 추가</Text>
+        </Pressable>
+      </View>
+
+      <FlatList
+        data={clubs}
+        keyExtractor={(c) => String(c.id)}
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        renderItem={({ item }) => (
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+              borderRadius: 10,
+              padding: 10,
+              backgroundColor: "#fff",
+            }}
+          >
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <View>
+                <Text style={{ fontWeight: "800" }}>{item.label}</Text>
+                <Text style={{ color: "#6B7280" }}>
+                  {item.type}
+                  {item.loft ? ` • ${item.loft}°` : ""} • sort {item.sort}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  router.push(`/clubs/${item.id}`);
+                  // 편집 후 돌아오면 useFocusEffect가 자동 갱신
+                }}
+                style={{
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  borderRadius: 8,
+                  backgroundColor: "#E5E7EB",
+                }}
+              >
+                <Text style={{ fontWeight: "700" }}>편집</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      />
 
       {/* 구분선 */}
       <View

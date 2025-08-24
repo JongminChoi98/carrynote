@@ -42,6 +42,9 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="shot/[id]" options={{ href: null }} />
+      <Tabs.Screen name="clubs/index" options={{ title: "클럽" }} />
+      <Tabs.Screen name="clubs/new" options={{ href: null }} />
+      <Tabs.Screen name="clubs/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

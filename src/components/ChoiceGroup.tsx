@@ -2,15 +2,15 @@ import { ScrollView, Text, useWindowDimensions, View } from "react-native";
 import { space } from "../theme/tokens";
 import ChoiceButton from "./ChoiceButton";
 
-export type ChoiceOption<T extends string> = {
+export type ChoiceOption<T extends string> = Readonly<{
   label: string;
   value: T;
   disabled?: boolean;
-};
+}>;
 
 type ChoiceGroupProps<T extends string> = {
   title?: string;
-  options: ChoiceOption<T>[];
+  options: ReadonlyArray<ChoiceOption<T>>;
   value: T;
   onChange: (v: T) => void;
   horizontal?: boolean;

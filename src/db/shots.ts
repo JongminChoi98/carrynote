@@ -207,3 +207,11 @@ export async function updateShot(
     );
   }
 }
+
+export async function countShotsByClub(clubId: number): Promise<number> {
+  const row = await db.getFirstAsync<{ c: number }>(
+    `SELECT COUNT(*) as c FROM shots WHERE clubId = ?;`,
+    [clubId]
+  );
+  return row?.c ?? 0;
+}

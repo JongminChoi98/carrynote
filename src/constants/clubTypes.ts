@@ -1,0 +1,16 @@
+export const CLUB_TYPE_OPTIONS = [
+  { label: "Driver", value: "DRIVER" },
+  { label: "3 Wood", value: "FW3" },
+  { label: "5 Wood", value: "FW5" },
+  { label: "Hybrid", value: "HY" },
+  { label: "5 Iron", value: "IRON5" },
+  { label: "6 Iron", value: "IRON6" },
+  { label: "7 Iron", value: "IRON7" },
+  { label: "8 Iron", value: "IRON8" },
+  { label: "9 Iron", value: "IRON9" },
+  { label: "PW", value: "WEDGE_PW" },
+  { label: "GW", value: "WEDGE_GW" },
+  { label: "SW", value: "WEDGE_SW" },
+  { label: "LW", value: "WEDGE_LW" },
+  { label: "Putter", value: "PUTTER" },
+] as const;
