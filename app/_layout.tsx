@@ -1,4 +1,3 @@
-// app/_layout.tsx
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -54,7 +53,6 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      {/* StatusBar 배경색 prop은 빼고, SafeAreaView 배경색으로 제어 */}
       <StatusBar style="dark" />
       <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
         <Slot />

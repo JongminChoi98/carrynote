@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import ChoiceGroup from "../../src/components/ChoiceGroup";
+import Screen from "../../src/components/Screen";
 import { getAllClubs } from "../../src/db/clubs";
 import { getUnitPrefs } from "../../src/db/settings";
 import { deleteShot, getShots, type ShotRow } from "../../src/db/shots";
@@ -231,12 +232,8 @@ export default function HistoryScreen() {
         style: "destructive",
         onPress: async () => {
           try {
-            // 1) DB 삭제
             await deleteShot(id);
-            // 2) 화면에서 즉시 제거(낙관적 갱신)
             setItems((prev) => prev.filter((it) => it.id !== id));
-            // 3) 오프셋/hasMore는 유지(페이지네이션 무너뜨리지 않기)
-            // 필요 시 다음 fetch에서 하나 더 불러오도록 reset 없이 유지
           } catch (e) {
             console.error(e);
             Alert.alert("오류", "삭제하지 못했습니다.");
@@ -246,7 +243,7 @@ export default function HistoryScreen() {
     ]);
   };
 
-  // UI 렌더링
+  // 로딩 뷰
   if (loading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -256,82 +253,87 @@ export default function HistoryScreen() {
     );
   }
 
-  return (
-    <View style={{ flex: 1 }}>
-      {/* 필터 + 통계 카드 */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-        <ChoiceGroup
-          title="클럽 필터"
-          options={clubOptions}
-          value={selectedClub}
-          onChange={onChangeClub}
-        />
+  // ===== 헤더(필터 + 통계) =====
+  const Header = (
+    <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+      <ChoiceGroup
+        title="클럽 필터"
+        options={clubOptions}
+        value={selectedClub}
+        onChange={onChangeClub}
+      />
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: "#E5E7EB",
+          borderRadius: 12,
+          padding: 12,
+          backgroundColor: "#FFFFFF",
+          marginBottom: 8,
+        }}
+      >
+        <Text style={{ fontWeight: "800", marginBottom: 6 }}>
+          간단 통계 (표시 단위 기준)
+        </Text>
 
-        {/* 통계 카드 */}
-        <View
-          style={{
-            borderWidth: 1,
-            borderColor: "#E5E7EB",
-            borderRadius: 12,
-            padding: 12,
-            backgroundColor: "#FFFFFF",
-            marginBottom: 8,
-          }}
-        >
-          <Text style={{ fontWeight: "800", marginBottom: 6 }}>
-            간단 통계 (표시 단위 기준)
-          </Text>
+        <Text style={{ marginBottom: 2 }}>
+          <Text style={{ fontWeight: "700" }}>캐리</Text>
+          {"  "}
+          평균{" "}
+          {Number.isFinite(stats.carry.mean)
+            ? Math.round(stats.carry.mean)
+            : "-"}{" "}
+          {stats.unit} /{"  "}
+          중간값{" "}
+          {Number.isFinite(stats.carry.median)
+            ? Math.round(stats.carry.median)
+            : "-"}{" "}
+          {stats.unit} /{"  "}
+          IQR{" "}
+          {Number.isFinite(stats.carry.iqr)
+            ? Math.round(stats.carry.iqr)
+            : "-"}{" "}
+          {stats.unit}
+        </Text>
 
-          <Text style={{ marginBottom: 2 }}>
-            <Text style={{ fontWeight: "700" }}>캐리</Text>
-            {"  "}
-            평균{" "}
-            {Number.isFinite(stats.carry.mean)
-              ? Math.round(stats.carry.mean)
-              : "-"}{" "}
-            {stats.unit} /{"  "}
-            중간값{" "}
-            {Number.isFinite(stats.carry.median)
-              ? Math.round(stats.carry.median)
-              : "-"}{" "}
-            {stats.unit} /{"  "}
-            IQR{" "}
-            {Number.isFinite(stats.carry.iqr)
-              ? Math.round(stats.carry.iqr)
-              : "-"}{" "}
-            {stats.unit}
-          </Text>
-
-          <Text>
-            <Text style={{ fontWeight: "700" }}>토탈</Text>
-            {"  "}
-            평균{" "}
-            {Number.isFinite(stats.total.mean)
-              ? Math.round(stats.total.mean)
-              : "-"}{" "}
-            {stats.unit} /{"  "}
-            중간값{" "}
-            {Number.isFinite(stats.total.median)
-              ? Math.round(stats.total.median)
-              : "-"}{" "}
-            {stats.unit} /{"  "}
-            IQR{" "}
-            {Number.isFinite(stats.total.iqr)
-              ? Math.round(stats.total.iqr)
-              : "-"}{" "}
-            {stats.unit}
-          </Text>
-        </View>
+        <Text>
+          <Text style={{ fontWeight: "700" }}>토탈</Text>
+          {"  "}
+          평균{" "}
+          {Number.isFinite(stats.total.mean)
+            ? Math.round(stats.total.mean)
+            : "-"}{" "}
+          {stats.unit} /{"  "}
+          중간값{" "}
+          {Number.isFinite(stats.total.median)
+            ? Math.round(stats.total.median)
+            : "-"}{" "}
+          {stats.unit} /{"  "}
+          IQR{" "}
+          {Number.isFinite(stats.total.iqr)
+            ? Math.round(stats.total.iqr)
+            : "-"}{" "}
+          {stats.unit}
+        </Text>
       </View>
+    </View>
+  );
 
-      {/* 리스트 */}
+  return (
+    // ✅ FlatList가 유일한 세로 스크롤러가 되도록: Screen에서 스크롤/키보드 기능 끄기
+    <Screen scroll={false} keyboard={false} contentPadding={0}>
       <FlatList
         data={items}
         keyExtractor={(it) => String(it.id)}
-        contentContainerStyle={{ padding: 16, paddingTop: 8 }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingTop: 8,
+          paddingBottom: 24,
+        }}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         onEndReachedThreshold={0.2}
         onEndReached={onEndReached}
+        ListHeaderComponent={Header}
         ListFooterComponent={
           loadingMore ? (
             <View style={{ paddingVertical: 12, alignItems: "center" }}>
@@ -356,75 +358,61 @@ export default function HistoryScreen() {
           >
             <View
               style={{
-                borderWidth: 1,
-                borderColor: "#E5E7EB",
-                borderRadius: 12,
-                padding: 14,
-                backgroundColor: "#FFFFFF",
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginBottom: 4,
               }}
             >
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  marginBottom: 4,
-                }}
-              >
-                <Text style={{ fontWeight: "800", fontSize: 16 }}>
-                  {item.club}
-                </Text>
+              <Text style={{ fontWeight: "800", fontSize: 16 }}>
+                {item.club}
+              </Text>
 
-                <View
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+              >
+                <Text style={{ color: "#6B7280" }}>{item.when}</Text>
+                <Pressable
+                  onPress={() => onDeleteItem(item.id)}
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                    borderRadius: 6,
+                    backgroundColor: "#FEE2E2",
                   }}
                 >
-                  <Text style={{ color: "#6B7280" }}>{item.when}</Text>
-                  <Pressable
-                    onPress={() => onDeleteItem(item.id)}
-                    style={{
-                      paddingVertical: 4,
-                      paddingHorizontal: 8,
-                      borderRadius: 6,
-                      backgroundColor: "#FEE2E2", // 연한 빨강
-                    }}
-                  >
-                    <Text style={{ color: "#991B1B", fontWeight: "700" }}>
-                      삭제
-                    </Text>
-                  </Pressable>
-                </View>
+                  <Text style={{ color: "#991B1B", fontWeight: "700" }}>
+                    삭제
+                  </Text>
+                </Pressable>
               </View>
-
-              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-                <Text style={{ fontWeight: "700" }}>캐리</Text>
-                <Text>{` ${item.carryNum} ${
-                  distanceUnit === "yard" ? "yd" : "m"
-                }`}</Text>
-                <Text style={{ fontWeight: "700", marginLeft: 12 }}>토탈</Text>
-                <Text>{` ${item.totalNum} ${
-                  distanceUnit === "yard" ? "yd" : "m"
-                }`}</Text>
-              </View>
-
-              {item.speeds ? (
-                <Text style={{ color: "#374151", marginTop: 4 }}>
-                  {item.speeds}
-                </Text>
-              ) : null}
-
-              {item.smash ? (
-                <Text style={{ color: "#374151", marginTop: 2 }}>
-                  스매시 팩터:{" "}
-                  <Text style={{ fontWeight: "700" }}>{item.smash}</Text>
-                </Text>
-              ) : null}
             </View>
+
+            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+              <Text style={{ fontWeight: "700" }}>캐리</Text>
+              <Text>{` ${item.carryNum} ${
+                distanceUnit === "yard" ? "yd" : "m"
+              }`}</Text>
+              <Text style={{ fontWeight: "700", marginLeft: 12 }}>토탈</Text>
+              <Text>{` ${item.totalNum} ${
+                distanceUnit === "yard" ? "yd" : "m"
+              }`}</Text>
+            </View>
+
+            {item.speeds ? (
+              <Text style={{ color: "#374151", marginTop: 4 }}>
+                {item.speeds}
+              </Text>
+            ) : null}
+
+            {item.smash ? (
+              <Text style={{ color: "#374151", marginTop: 2 }}>
+                스매시 팩터:{" "}
+                <Text style={{ fontWeight: "700" }}>{item.smash}</Text>
+              </Text>
+            ) : null}
           </Pressable>
         )}
       />
-    </View>
+    </Screen>
   );
 }

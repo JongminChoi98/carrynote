@@ -1,10 +1,13 @@
 import { router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text } from "react-native";
+import Screen from "../../src/components/Screen";
 
 export default function HomeScreen() {
   return (
-    <View
-      style={{
+    <Screen
+      scroll={false}
+      keyboard={false}
+      contentStyle={{
         flex: 1,
         justifyContent: "center",
         alignItems: "center",
@@ -24,6 +27,6 @@ export default function HomeScreen() {
       >
         <Text style={{ color: "white", fontWeight: "700" }}>바로 기록하기</Text>
       </Pressable>
-    </View>
+    </Screen>
   );
 }

@@ -1,15 +1,8 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import ChoiceGroup from "../../../src/components/ChoiceGroup";
+import Screen from "../../../src/components/Screen";
 import { getAllClubs } from "../../../src/db/clubs";
 import { getUnitPrefs } from "../../../src/db/settings";
 import { deleteShot, getShotById, updateShot } from "../../../src/db/shots";
@@ -51,6 +44,14 @@ export default function ShotDetailScreen() {
     useCallback(() => {
       let alive = true;
       (async () => {
+        // id가 유효하지 않으면 바로 복귀
+        if (!id || Number.isNaN(shotId)) {
+          Alert.alert("오류", "잘못된 접근입니다.", [
+            { text: "확인", onPress: () => router.back() },
+          ]);
+          return;
+        }
+
         setLoading(true);
         const prefs = await getUnitPrefs();
         const clubRows = await getAllClubs();
@@ -65,8 +66,9 @@ export default function ShotDetailScreen() {
         setClubs(options);
 
         if (!shot) {
-          Alert.alert("오류", "샷을 찾을 수 없습니다.");
-          router.back();
+          Alert.alert("오류", "샷을 찾을 수 없습니다.", [
+            { text: "확인", onPress: () => router.back() },
+          ]);
           return;
         }
 
@@ -106,7 +108,7 @@ export default function ShotDetailScreen() {
       return () => {
         alive = false;
       };
-    }, [shotId])
+    }, [id, shotId])
   );
 
   const smash = useMemo(() => {
@@ -176,114 +178,114 @@ export default function ShotDetailScreen() {
     );
   }
 
+  // ✅ 공용 Screen으로 스크롤/키보드 회피 처리 (중첩 래퍼 제거)
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1 }}
-    >
-      <View style={{ flex: 1, padding: 20, gap: 14 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 6 }}>
-          샷 상세/수정
+    <Screen scroll keyboard contentStyle={{ gap: 14 }}>
+      <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 6 }}>
+        샷 상세/수정
+      </Text>
+
+      {/* 클럽 변경 */}
+      {clubs.length > 0 && clubId != null ? (
+        <ChoiceGroup
+          title="클럽"
+          options={clubs.map((c) => ({
+            label: c.label,
+            value: String(c.id),
+          }))}
+          value={String(clubId)}
+          onChange={(v) => setClubId(Number(v))}
+        />
+      ) : null}
+
+      {/* 필수 */}
+      <View style={{ gap: 10, marginTop: 4 }}>
+        <Text style={{ fontWeight: "700" }}>
+          캐리 ({distanceUnit === "yard" ? "yd" : "m"}) *
         </Text>
+        <TextInput
+          value={carry}
+          onChangeText={setCarry}
+          keyboardType="decimal-pad"
+          inputMode="numeric"
+          style={inputStyle}
+        />
 
-        {/* 클럽 변경 */}
-        {clubs.length > 0 && clubId != null ? (
-          <ChoiceGroup
-            title="클럽"
-            options={clubs.map((c) => ({
-              label: c.label,
-              value: String(c.id),
-            }))}
-            value={String(clubId)}
-            onChange={(v) => setClubId(Number(v))}
-          />
-        ) : null}
+        <Text style={{ fontWeight: "700", marginTop: 6 }}>
+          토탈 ({distanceUnit === "yard" ? "yd" : "m"}) *
+        </Text>
+        <TextInput
+          value={total}
+          onChangeText={setTotal}
+          keyboardType="decimal-pad"
+          inputMode="numeric"
+          style={inputStyle}
+        />
+      </View>
 
-        {/* 필수 */}
-        <View style={{ gap: 10, marginTop: 4 }}>
-          <Text style={{ fontWeight: "700" }}>
-            캐리 ({distanceUnit === "yard" ? "yd" : "m"}) *
-          </Text>
-          <TextInput
-            value={carry}
-            onChangeText={setCarry}
-            keyboardType="numeric"
-            style={inputStyle}
-          />
+      {/* 선택 */}
+      <View style={{ gap: 10, marginTop: 12 }}>
+        <Text style={{ fontWeight: "700" }}>볼 스피드 ({speedUnit})</Text>
+        <TextInput
+          value={ballSpeed}
+          onChangeText={setBallSpeed}
+          keyboardType="decimal-pad"
+          inputMode="numeric"
+          style={inputStyle}
+        />
 
-          <Text style={{ fontWeight: "700", marginTop: 6 }}>
-            토탈 ({distanceUnit === "yard" ? "yd" : "m"}) *
-          </Text>
-          <TextInput
-            value={total}
-            onChangeText={setTotal}
-            keyboardType="numeric"
-            style={inputStyle}
-          />
-        </View>
+        <Text style={{ fontWeight: "700", marginTop: 6 }}>
+          클럽 스피드 ({speedUnit})
+        </Text>
+        <TextInput
+          value={clubSpeed}
+          onChangeText={setClubSpeed}
+          keyboardType="decimal-pad"
+          inputMode="numeric"
+          style={inputStyle}
+        />
 
-        {/* 선택 */}
-        <View style={{ gap: 10, marginTop: 12 }}>
-          <Text style={{ fontWeight: "700" }}>볼 스피드 ({speedUnit})</Text>
-          <TextInput
-            value={ballSpeed}
-            onChangeText={setBallSpeed}
-            keyboardType="numeric"
-            style={inputStyle}
-          />
-
-          <Text style={{ fontWeight: "700", marginTop: 6 }}>
-            클럽 스피드 ({speedUnit})
-          </Text>
-          <TextInput
-            value={clubSpeed}
-            onChangeText={setClubSpeed}
-            keyboardType="numeric"
-            style={inputStyle}
-          />
-
-          <View style={{ marginTop: 6 }}>
-            <Text style={{ color: "#6B7280" }}>
-              스매시 팩터(표시 단위 기반 추정):{" "}
-              <Text style={{ fontWeight: "700", color: "#111827" }}>
-                {smash !== null ? smash.toFixed(2) : "-"}
-              </Text>
+        <View style={{ marginTop: 6 }}>
+          <Text style={{ color: "#6B7280" }}>
+            스매시 팩터(표시 단위 기반 추정):{" "}
+            <Text style={{ fontWeight: "700", color: "#111827" }}>
+              {smash !== null ? smash.toFixed(2) : "-"}
             </Text>
-          </View>
-        </View>
-
-        {/* 액션들 */}
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
-          <Pressable
-            onPress={onSave}
-            disabled={!canSave || saving}
-            style={{
-              backgroundColor: canSave ? "#2E7D32" : "#93C5AA",
-              paddingVertical: 14,
-              borderRadius: 12,
-              alignItems: "center",
-              flex: 1,
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "700" }}>
-              {saving ? "저장 중…" : "저장"}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onDelete}
-            style={{
-              backgroundColor: "#B91C1C",
-              paddingVertical: 14,
-              borderRadius: 12,
-              alignItems: "center",
-              flex: 1,
-            }}
-          >
-            <Text style={{ color: "white", fontWeight: "700" }}>삭제</Text>
-          </Pressable>
+          </Text>
         </View>
       </View>
-    </KeyboardAvoidingView>
+
+      {/* 액션들 */}
+      <View style={{ flexDirection: "row", gap: 12, marginTop: 8 }}>
+        <Pressable
+          onPress={onSave}
+          disabled={!canSave || saving}
+          style={{
+            backgroundColor: canSave ? "#2E7D32" : "#93C5AA",
+            paddingVertical: 14,
+            borderRadius: 12,
+            alignItems: "center",
+            flex: 1,
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "700" }}>
+            {saving ? "저장 중…" : "저장"}
+          </Text>
+        </Pressable>
+
+        <Pressable
+          onPress={onDelete}
+          style={{
+            backgroundColor: "#B91C1C",
+            paddingVertical: 14,
+            borderRadius: 12,
+            alignItems: "center",
+            flex: 1,
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "700" }}>삭제</Text>
+        </Pressable>
+      </View>
+    </Screen>
   );
 }

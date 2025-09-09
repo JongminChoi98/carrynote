@@ -1,7 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, Text, TextInput } from "react-native";
 import ChoiceGroup from "../../../src/components/ChoiceGroup";
+import Screen from "../../../src/components/Screen";
 import { CLUB_TYPE_OPTIONS } from "../../../src/constants/clubTypes";
 import { insertClub } from "../../../src/db/clubs";
 
@@ -10,16 +11,18 @@ export default function ClubNewScreen() {
   const [type, setType] = useState<string>(CLUB_TYPE_OPTIONS[0].value);
   const [loft, setLoft] = useState<string>("");
   const [sort, setSort] = useState<string>("999");
+  const [saving, setSaving] = useState(false);
 
-  const canSave = label.trim().length > 0;
+  const canSave = label.trim().length > 0 && !saving;
 
   const onSave = async () => {
     if (!canSave) return;
+    setSaving(true);
     try {
       await insertClub({
-        label,
+        label: label.trim(),
         type,
-        sort: Number(sort) || 999,
+        sort: Number.isFinite(Number(sort)) ? Number(sort) : 999,
         loft: loft ? parseFloat(loft) : null,
       });
       Alert.alert("저장됨", "클럽이 추가되었습니다.", [
@@ -28,6 +31,8 @@ export default function ClubNewScreen() {
     } catch (e) {
       console.error(e);
       Alert.alert("오류", "저장하지 못했습니다.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -37,10 +42,12 @@ export default function ClubNewScreen() {
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
+    fontSize: 16 as const,
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
+    // ✅ 공용 Screen: 스크롤 + 키보드 회피 일괄 처리
+    <Screen scroll keyboard contentStyle={{ gap: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: "800" }}>클럽 추가</Text>
 
       <Text style={{ fontWeight: "700" }}>표시 이름 *</Text>
@@ -53,7 +60,8 @@ export default function ClubNewScreen() {
 
       <ChoiceGroup
         title="타입"
-        options={CLUB_TYPE_OPTIONS}
+        // readonly 타입 경고 방지용 얕은 복사
+        options={CLUB_TYPE_OPTIONS.map((o) => ({ ...o }))}
         value={type}
         onChange={setType}
       />
@@ -62,7 +70,8 @@ export default function ClubNewScreen() {
       <TextInput
         value={loft}
         onChangeText={setLoft}
-        keyboardType="numeric"
+        keyboardType="decimal-pad"
+        inputMode="numeric"
         placeholder="예: 10.5"
         style={inputStyle}
       />
@@ -71,7 +80,8 @@ export default function ClubNewScreen() {
       <TextInput
         value={sort}
         onChangeText={setSort}
-        keyboardType="numeric"
+        keyboardType="number-pad"
+        inputMode="numeric"
         placeholder="예: 1"
         style={inputStyle}
       />
@@ -86,8 +96,10 @@ export default function ClubNewScreen() {
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#fff", fontWeight: "700" }}>저장</Text>
+        <Text style={{ color: "#fff", fontWeight: "700" }}>
+          {saving ? "저장 중…" : "저장"}
+        </Text>
       </Pressable>
-    </View>
+    </Screen>
   );
 }

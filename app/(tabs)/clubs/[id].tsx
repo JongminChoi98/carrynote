@@ -2,6 +2,7 @@ import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
 import { Alert, Pressable, Text, TextInput, View } from "react-native";
 import ChoiceGroup from "../../../src/components/ChoiceGroup";
+import Screen from "../../../src/components/Screen";
 import { CLUB_TYPE_OPTIONS } from "../../../src/constants/clubTypes";
 import {
   deleteClub,
@@ -23,13 +24,23 @@ export default function ClubEditScreen() {
   const [loft, setLoft] = useState<string>("");
   const [sort, setSort] = useState<string>("999");
 
+  // 진입/복귀 시 데이터 로드
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       (async () => {
+        // id 가드
+        if (!id || Number.isNaN(clubId)) {
+          Alert.alert("오류", "잘못된 접근입니다.", [
+            { text: "확인", onPress: () => router.back() },
+          ]);
+          return;
+        }
+
         setLoading(true);
         const row: ClubRow | null = await getClubById(clubId);
         if (!alive) return;
+
         if (!row) {
           Alert.alert("오류", "클럽을 찾을 수 없습니다.", [
             { text: "확인", onPress: () => router.back() },
@@ -45,7 +56,7 @@ export default function ClubEditScreen() {
       return () => {
         alive = false;
       };
-    }, [clubId])
+    }, [id, clubId])
   );
 
   const canSave = label.trim().length > 0;
@@ -111,10 +122,12 @@ export default function ClubEditScreen() {
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
+    fontSize: 16 as const,
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 12 }}>
+    // ✅ 공용 Screen으로 스크롤/키보드 회피 일괄 처리
+    <Screen scroll keyboard contentStyle={{ gap: 12 }}>
       <Text style={{ fontSize: 18, fontWeight: "800" }}>클럽 편집</Text>
 
       <Text style={{ fontWeight: "700" }}>표시 이름 *</Text>
@@ -127,7 +140,8 @@ export default function ClubEditScreen() {
 
       <ChoiceGroup
         title="타입"
-        options={CLUB_TYPE_OPTIONS}
+        // CLUB_TYPE_OPTIONS가 readonly면 타입 에러 방지용 얕은 복사
+        options={CLUB_TYPE_OPTIONS.map((o) => ({ ...o }))}
         value={type}
         onChange={setType}
       />
@@ -136,7 +150,8 @@ export default function ClubEditScreen() {
       <TextInput
         value={loft}
         onChangeText={setLoft}
-        keyboardType="numeric"
+        keyboardType="decimal-pad"
+        inputMode="numeric"
         placeholder="예: 10.5"
         style={inputStyle}
       />
@@ -145,7 +160,8 @@ export default function ClubEditScreen() {
       <TextInput
         value={sort}
         onChangeText={setSort}
-        keyboardType="numeric"
+        keyboardType="number-pad"
+        inputMode="numeric"
         placeholder="예: 1"
         style={inputStyle}
       />
@@ -166,6 +182,7 @@ export default function ClubEditScreen() {
             {saving ? "저장 중…" : "저장"}
           </Text>
         </Pressable>
+
         <Pressable
           onPress={onDelete}
           style={{
@@ -179,6 +196,6 @@ export default function ClubEditScreen() {
           <Text style={{ color: "#fff", fontWeight: "700" }}>삭제</Text>
         </Pressable>
       </View>
-    </View>
+    </Screen>
   );
 }

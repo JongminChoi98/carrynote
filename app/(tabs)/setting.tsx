@@ -2,6 +2,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, FlatList, Pressable, Text, View } from "react-native";
 import ChoiceGroup from "../../src/components/ChoiceGroup";
+import Screen from "../../src/components/Screen";
 import { getAllClubs, type ClubRow } from "../../src/db/clubs";
 import {
   getUnitPrefs,
@@ -18,7 +19,7 @@ export default function SettingScreen() {
   const [saving, setSaving] = useState(false);
   const [clubs, setClubs] = useState<ClubRow[]>([]);
 
-  // 최초 로드: 단위 + 초기 클럽 목록
+  // 최초 로드
   useEffect(() => {
     (async () => {
       const prefs = await getUnitPrefs();
@@ -29,14 +30,12 @@ export default function SettingScreen() {
     })();
   }, []);
 
-  // ✅ 포커스가 돌아올 때마다 클럽 목록 새로고침
+  // 돌아올 때마다 클럽 새로고침
   const refreshClubs = useCallback(async () => {
     setClubs(await getAllClubs());
   }, []);
-
   useFocusEffect(
     useCallback(() => {
-      // settings 화면이 다시 보이면 리프레시
       refreshClubs();
     }, [refreshClubs])
   );
@@ -71,8 +70,16 @@ export default function SettingScreen() {
     );
   }
 
-  return (
-    <View style={{ flex: 1, padding: 20, gap: 16 }}>
+  // ===== 헤더/푸터 =====
+  const Header = (
+    <View
+      style={{
+        paddingHorizontal: 20,
+        paddingTop: 20,
+        paddingBottom: 16,
+        gap: 16,
+      }}
+    >
       <Text style={{ fontSize: 24, fontWeight: "800", marginTop: 6 }}>
         환경설정
       </Text>
@@ -117,12 +124,12 @@ export default function SettingScreen() {
         </Text>
       </Pressable>
 
-      {/* ========== 클럽 관리 섹션 ========== */}
+      {/* 구분선 */}
       <View
         style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 }}
       />
-      <Text style={{ fontSize: 18, fontWeight: "800" }}>내 클럽 관리</Text>
 
+      {/* 클럽 관리 헤더 */}
       <View
         style={{
           flexDirection: "row",
@@ -130,16 +137,9 @@ export default function SettingScreen() {
           alignItems: "center",
         }}
       >
-        <Text style={{ color: "#6B7280" }}>
-          추가/편집은 여기서도 바로 할 수 있어요.
-        </Text>
+        <Text style={{ fontSize: 18, fontWeight: "800" }}>내 클럽 관리</Text>
         <Pressable
-          onPress={() => {
-            // ❌ await 필요 없음: push는 Promise를 반환하지 않아요.
-            router.push("/clubs/new");
-            // 저장은 새 화면에서 이뤄지므로, 여기서 즉시 refresh하지 말고
-            // ✅ 돌아왔을 때 useFocusEffect로 자동 새로고침
-          }}
+          onPress={() => router.push("/clubs/new")}
           style={{
             backgroundColor: "#2E7D32",
             paddingVertical: 8,
@@ -150,14 +150,50 @@ export default function SettingScreen() {
           <Text style={{ color: "#fff", fontWeight: "700" }}>클럽 추가</Text>
         </Pressable>
       </View>
+      <Text style={{ color: "#6B7280" }}>
+        추가/편집은 여기서도 바로 할 수 있어요.
+      </Text>
+    </View>
+  );
 
+  const Footer = (
+    <View style={{ paddingHorizontal: 20, paddingVertical: 16 }}>
+      <View
+        style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 }}
+      />
+      <Pressable
+        onPress={resetOnboarding}
+        style={{
+          backgroundColor: "#2563EB",
+          paddingVertical: 12,
+          paddingHorizontal: 16,
+          borderRadius: 8,
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ color: "white", fontWeight: "700" }}>
+          온보딩 다시 보기 (TEST)
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  return (
+    // ✅ Screen에서 스크롤/키보드 기능 끄고, 패딩 0으로 설정
+    <Screen scroll={false} keyboard={false} contentPadding={0}>
       <FlatList
         data={clubs}
         keyExtractor={(c) => String(c.id)}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+        ListHeaderComponent={Header}
+        ListFooterComponent={Footer}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         renderItem={({ item }) => (
           <View
             style={{
+              marginHorizontal: 20,
               borderWidth: 1,
               borderColor: "#E5E7EB",
               borderRadius: 10,
@@ -180,10 +216,7 @@ export default function SettingScreen() {
                 </Text>
               </View>
               <Pressable
-                onPress={() => {
-                  router.push(`/clubs/${item.id}`);
-                  // 편집 후 돌아오면 useFocusEffect가 자동 갱신
-                }}
+                onPress={() => router.push(`/clubs/${item.id}`)}
                 style={{
                   paddingVertical: 8,
                   paddingHorizontal: 10,
@@ -197,27 +230,6 @@ export default function SettingScreen() {
           </View>
         )}
       />
-
-      {/* 구분선 */}
-      <View
-        style={{ height: 1, backgroundColor: "#E5E7EB", marginVertical: 16 }}
-      />
-
-      {/* 테스트용 온보딩 버튼 */}
-      <Pressable
-        onPress={resetOnboarding}
-        style={{
-          backgroundColor: "#2563EB",
-          paddingVertical: 12,
-          paddingHorizontal: 16,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
-      >
-        <Text style={{ color: "white", fontWeight: "700" }}>
-          온보딩 다시 보기 (TEST)
-        </Text>
-      </Pressable>
-    </View>
+    </Screen>
   );
 }
