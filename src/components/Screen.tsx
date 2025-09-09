@@ -1,77 +1,54 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleProp,
+  StatusBar,
   View,
-  ViewStyle,
 } from "react-native";
-
-/**
- * 모든 화면에서 공통으로 쓰는 래퍼.
- * - scroll: true면 ScrollView(폼/설정 화면에 추천), false면 그냥 View
- * - keyboard: true면 KeyboardAvoidingView 사용 (입력 화면 추천)
- * - contentPadding: 내부 기본 패딩
- * - contentStyle: 내부 컨테이너 스타일 확장
- */
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type ScreenProps = {
   children: ReactNode;
-  scroll?: boolean; // 기본 true (폼/설정 화면)
-  keyboard?: boolean; // 기본 true (입력 화면)
-  contentPadding?: number; // 기본 20
-  contentStyle?: StyleProp<ViewStyle>;
-  keyboardDismissOnDrag?: boolean; // 기본 true (iOS에서 드래그로 키보드 닫기)
+  scroll?: boolean;
+  keyboard?: boolean;
+  contentStyle?: object;
+  contentPadding?: number;
 };
 
 export default function Screen({
   children,
   scroll = false,
-  keyboard = true,
-  contentPadding = 20,
+  keyboard = false,
   contentStyle,
-  keyboardDismissOnDrag = true,
+  contentPadding = 20,
 }: ScreenProps) {
-  const Inner = () => {
-    if (scroll) {
-      return (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            { padding: contentPadding, paddingBottom: 24 },
-            contentStyle,
-          ]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={keyboardDismissOnDrag ? "on-drag" : "none"}
-        >
-          {children}
-        </ScrollView>
-      );
-    }
-    return (
-      <View style={[{ flex: 1, padding: contentPadding }, contentStyle]}>
-        {children}
-      </View>
-    );
-  };
+  const Container = scroll ? ScrollView : View;
+  const containerProps = scroll
+    ? {
+        contentContainerStyle: [{ padding: contentPadding }, contentStyle],
+        // ✅ 인풋/버튼 탭 시엔 키보드 유지, 빈 곳 탭 시엔 닫힘
+        keyboardShouldPersistTaps: "handled" as const,
+        // 드래그하면 자연스럽게 닫힘
+        keyboardDismissMode: "on-drag" as const,
+      }
+    : { style: [{ padding: contentPadding }, contentStyle] };
 
-  if (!keyboard) {
-    return <Inner />;
-  }
+  const body = <Container {...(containerProps as any)}>{children}</Container>;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.select({ ios: "padding", android: undefined })}
-      style={{ flex: 1 }}
-    >
-      <Inner />
-    </KeyboardAvoidingView>
+    <SafeAreaView style={{ flex: 1 }} edges={["top", "right", "left"]}>
+      <StatusBar barStyle="dark-content" />
+      {keyboard ? (
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.select({ ios: "padding", android: undefined })}
+        >
+          {body}
+        </KeyboardAvoidingView>
+      ) : (
+        body
+      )}
+    </SafeAreaView>
   );
 }
-
-/** FlatList 등 "리스트 화면"에서 재사용할 기본 contentContainerStyle */
-export const listContent = {
-  paddingHorizontal: 20,
-  paddingBottom: 24,
-};
