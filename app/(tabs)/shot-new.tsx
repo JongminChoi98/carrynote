@@ -1,5 +1,5 @@
-import { router, useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,25 +13,33 @@ import ChoiceGroup from "../../src/components/ChoiceGroup";
 import { getAllClubs } from "../../src/db/clubs";
 import { getUnitPrefs } from "../../src/db/settings";
 import { insertShot } from "../../src/db/shots";
+import { useLastShotStore } from "../../src/store/lastShotStore";
 
-type ClubOption = { label: string; value: string; id: number };
+type ClubOption = { label: string; id: number };
 
 export default function ShotNewScreen() {
   // 단위
   const [distanceUnit, setDistanceUnit] = useState<"yard" | "meter">("yard");
   const [speedUnit, setSpeedUnit] = useState<"mph" | "mps">("mph");
 
-  // 클럽 목록 (DB)
+  // 클럽
   const [clubOptions, setClubOptions] = useState<ClubOption[]>([]);
   const [clubId, setClubId] = useState<number | null>(null);
 
-  // 폼
-  const [carry, setCarry] = useState<string>("");
-  const [total, setTotal] = useState<string>("");
-  const [ballSpeed, setBallSpeed] = useState<string>("");
-  const [clubSpeed, setClubSpeed] = useState<string>("");
+  // 입력 상태 (마지막 값 자동 유지)
+  const { carry, total, ballSpeed, clubSpeed, setLastShot } =
+    useLastShotStore();
+  const [carryLocal, setCarryLocal] = useState(carry);
+  const [totalLocal, setTotalLocal] = useState(total);
+  const [ballLocal, setBallLocal] = useState(ballSpeed);
+  const [clubLocal, setClubLocal] = useState(clubSpeed);
 
-  // 포커스될 때 단위/클럽 로드
+  // 포커스 이동 refs
+  const totalRef = useRef<TextInput>(null);
+  const ballRef = useRef<TextInput>(null);
+  const clubRef = useRef<TextInput>(null);
+
+  // 화면 진입/재진입 시 단위/클럽 & 마지막 값 로드
   useFocusEffect(
     useCallback(() => {
       let alive = true;
@@ -39,62 +47,82 @@ export default function ShotNewScreen() {
         const prefs = await getUnitPrefs();
         const clubs = await getAllClubs();
         if (!alive) return;
+
         setDistanceUnit(prefs.distance);
         setSpeedUnit(prefs.speed);
-        const opts = clubs.map((c) => ({
-          label: c.label,
-          value: c.type,
-          id: c.id,
-        }));
+
+        const opts = clubs.map((c) => ({ label: c.label, id: c.id }));
         setClubOptions(opts);
         if (opts.length > 0 && clubId == null) setClubId(opts[0].id);
+
+        // store의 최근 값으로 입력 초기화 (반복 기록 빠르게)
+        setCarryLocal(carry);
+        setTotalLocal(total);
+        setBallLocal(ballSpeed);
+        setClubLocal(clubSpeed);
       })();
       return () => {
         alive = false;
       };
-    }, [clubId])
+    }, [clubId, carry, total, ballSpeed, clubSpeed])
   );
 
+  // 스매시 표시(입력 단위 기반 간이 계산)
   const smash = useMemo(() => {
-    const bs = parseFloat(ballSpeed);
-    const cs = parseFloat(clubSpeed);
+    const bs = parseFloat(ballLocal);
+    const cs = parseFloat(clubLocal);
     if (!isFinite(bs) || !isFinite(cs) || cs <= 0) return null;
     return Math.round((bs / cs) * 100) / 100;
-  }, [ballSpeed, clubSpeed]);
+  }, [ballLocal, clubLocal]);
 
   const canSave =
     clubId !== null &&
-    carry.trim().length > 0 &&
-    total.trim().length > 0 &&
-    isFinite(parseFloat(carry)) &&
-    isFinite(parseFloat(total));
+    carryLocal.trim().length > 0 &&
+    totalLocal.trim().length > 0 &&
+    isFinite(parseFloat(carryLocal)) &&
+    isFinite(parseFloat(totalLocal));
 
-  const inputStyle = {
+  const inputBase = {
     borderWidth: 1,
     borderColor: "#D0D5DD",
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     fontSize: 16 as const,
+    flex: 1,
   };
+
+  const Unit = ({ children }: { children: string }) => (
+    <Text style={{ marginLeft: 8, color: "#374151", fontWeight: "700" }}>
+      {children}
+    </Text>
+  );
 
   const onSave = async () => {
     if (!canSave || clubId == null) return;
     try {
+      // DB 저장
       const res = await insertShot({
         clubId,
-        carry: parseFloat(carry),
-        total: parseFloat(total),
+        carry: parseFloat(carryLocal),
+        total: parseFloat(totalLocal),
         distanceUnit,
-        ballSpeed: ballSpeed ? parseFloat(ballSpeed) : null,
-        clubSpeed: clubSpeed ? parseFloat(clubSpeed) : null,
+        ballSpeed: ballLocal ? parseFloat(ballLocal) : null,
+        clubSpeed: clubLocal ? parseFloat(clubLocal) : null,
         speedUnit,
       });
+
+      // 마지막 값 유지 (반복 입력을 빠르게)
+      setLastShot({
+        carry: carryLocal,
+        total: totalLocal,
+        ballSpeed: ballLocal,
+        clubSpeed: clubLocal,
+      });
+
       Alert.alert("저장됨", `스매시: ${res.smash ?? "-"}`);
-      // 마지막 값 유지(원하면 clear)
-      setCarry("");
-      setTotal("");
-      // setBallSpeed(""); setClubSpeed("");
+      // 필요 시 아래 주석 해제하여 입력 필드 초기화
+      // setCarryLocal(""); setTotalLocal(""); setBallLocal(""); setClubLocal("");
     } catch (e) {
       console.error(e);
       Alert.alert("오류", "샷을 저장하지 못했습니다.");
@@ -107,10 +135,7 @@ export default function ShotNewScreen() {
       style={{ flex: 1 }}
     >
       <View style={{ flex: 1, padding: 20, gap: 14 }}>
-        <Text style={{ fontSize: 18, fontWeight: "800", marginTop: 6 }}>
-          샷 입력
-        </Text>
-
+        {/* 헤더 + 클럽 추가 빠른 진입 */}
         <View
           style={{
             flexDirection: "row",
@@ -122,7 +147,14 @@ export default function ShotNewScreen() {
             샷 입력
           </Text>
           <Pressable
-            onPress={() => router.push("/clubs/new")}
+            onPress={() => {
+              // 클럽 추가 화면으로 이동
+              // (돌아오면 포커스 훅으로 목록 자동 새로고침)
+              // @ts-ignore
+              import("expo-router").then(({ router }) =>
+                router.push("/clubs/new")
+              );
+            }}
             style={{
               backgroundColor: "#E5E7EB",
               paddingVertical: 8,
@@ -135,66 +167,97 @@ export default function ShotNewScreen() {
         </View>
 
         {/* 클럽 선택 */}
-        {clubOptions.length > 0 ? (
+        {clubOptions.length > 0 && clubId != null ? (
           <ChoiceGroup
             title="클럽 선택"
             options={clubOptions.map((o) => ({
               label: o.label,
               value: String(o.id),
             }))}
-            value={clubId != null ? String(clubId) : String(clubOptions[0]?.id)}
+            value={String(clubId)}
             onChange={(v) => setClubId(Number(v))}
           />
         ) : (
           <Text style={{ color: "#6B7280" }}>클럽 목록을 불러오는 중…</Text>
         )}
 
-        {/* 캐리/토탈 */}
-        <View style={{ gap: 10, marginTop: 4 }}>
+        {/* 캐리 */}
+        <View style={{ gap: 8, marginTop: 4 }}>
           <Text style={{ fontWeight: "700" }}>
             캐리 ({distanceUnit === "yard" ? "yd" : "m"}) *
           </Text>
-          <TextInput
-            value={carry}
-            onChangeText={setCarry}
-            keyboardType="numeric"
-            placeholder={distanceUnit === "yard" ? "예: 235" : "예: 215"}
-            style={inputStyle}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              value={carryLocal}
+              onChangeText={setCarryLocal}
+              keyboardType="decimal-pad"
+              inputMode="numeric"
+              placeholder={distanceUnit === "yard" ? "예: 235" : "예: 215"}
+              returnKeyType="next"
+              onSubmitEditing={() => totalRef.current?.focus()}
+              style={inputBase}
+            />
+            <Unit>{distanceUnit === "yard" ? "yd" : "m"}</Unit>
+          </View>
+        </View>
 
-          <Text style={{ fontWeight: "700", marginTop: 6 }}>
+        {/* 토탈 */}
+        <View style={{ gap: 8 }}>
+          <Text style={{ fontWeight: "700" }}>
             토탈 ({distanceUnit === "yard" ? "yd" : "m"}) *
           </Text>
-          <TextInput
-            value={total}
-            onChangeText={setTotal}
-            keyboardType="numeric"
-            placeholder={distanceUnit === "yard" ? "예: 252" : "예: 230"}
-            style={inputStyle}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              ref={totalRef}
+              value={totalLocal}
+              onChangeText={setTotalLocal}
+              keyboardType="decimal-pad"
+              inputMode="numeric"
+              placeholder={distanceUnit === "yard" ? "예: 252" : "예: 230"}
+              returnKeyType="next"
+              onSubmitEditing={() => ballRef.current?.focus()}
+              style={inputBase}
+            />
+            <Unit>{distanceUnit === "yard" ? "yd" : "m"}</Unit>
+          </View>
         </View>
 
         {/* 선택: 속도 */}
-        <View style={{ gap: 10, marginTop: 12 }}>
-          <Text style={{ fontWeight: "700" }}>볼 스피드 ({speedUnit})</Text>
-          <TextInput
-            value={ballSpeed}
-            onChangeText={setBallSpeed}
-            keyboardType="numeric"
-            placeholder={speedUnit === "mph" ? "예: 150" : "예: 67"}
-            style={inputStyle}
-          />
+        <View style={{ gap: 8, marginTop: 6 }}>
+          <Text style={{ fontWeight: "700" }}>
+            볼 스피드 ({speedUnit === "mph" ? "mph" : "m/s"})
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              ref={ballRef}
+              value={ballLocal}
+              onChangeText={setBallLocal}
+              keyboardType="decimal-pad"
+              inputMode="numeric"
+              placeholder={speedUnit === "mph" ? "예: 150" : "예: 67"}
+              returnKeyType="next"
+              onSubmitEditing={() => clubRef.current?.focus()}
+              style={inputBase}
+            />
+            <Unit>{speedUnit === "mph" ? "mph" : "m/s"}</Unit>
+          </View>
 
           <Text style={{ fontWeight: "700", marginTop: 6 }}>
-            클럽 스피드 ({speedUnit})
+            클럽 스피드 ({speedUnit === "mph" ? "mph" : "m/s"})
           </Text>
-          <TextInput
-            value={clubSpeed}
-            onChangeText={setClubSpeed}
-            keyboardType="numeric"
-            placeholder={speedUnit === "mph" ? "예: 100" : "예: 45"}
-            style={inputStyle}
-          />
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TextInput
+              ref={clubRef}
+              value={clubLocal}
+              onChangeText={setClubLocal}
+              keyboardType="decimal-pad"
+              inputMode="numeric"
+              placeholder={speedUnit === "mph" ? "예: 100" : "예: 45"}
+              returnKeyType="done"
+              style={inputBase}
+            />
+            <Unit>{speedUnit === "mph" ? "mph" : "m/s"}</Unit>
+          </View>
 
           <View style={{ marginTop: 6 }}>
             <Text style={{ color: "#6B7280" }}>
@@ -224,7 +287,7 @@ export default function ShotNewScreen() {
         </Pressable>
 
         <Text style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
-          * 필수: 캐리/토탈. 저장은 SI(미터/초)로 이루어집니다.
+          * 저장하면 마지막 값이 유지돼 반복 기록이 빨라집니다.
         </Text>
       </View>
     </KeyboardAvoidingView>

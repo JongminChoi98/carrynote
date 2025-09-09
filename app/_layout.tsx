@@ -1,7 +1,10 @@
 // app/_layout.tsx
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+
 import { initClubs } from "../src/db/clubs";
 import { getHasOnboarded, initDb } from "../src/db/settings";
 import { initShots } from "../src/db/shots";
@@ -14,6 +17,7 @@ export default function RootLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       // 1) DB 준비
       await initDb();
@@ -22,26 +26,39 @@ export default function RootLayout() {
 
       // 2) 온보딩 여부 확인
       const onboarded = await getHasOnboarded();
-
       const inAuth = segments[0] === "(auth)";
+
       if (!onboarded && !inAuth) {
-        // 미온보딩이면 온보딩으로
         router.replace("/onboarding");
       } else if (onboarded && inAuth) {
-        // 온보딩 끝났는데 (auth)에 있으면 홈으로
         router.replace("/");
       }
 
-      setReady(true);
-      SplashScreen.hideAsync().catch(() => {});
+      if (mounted) {
+        setReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }
     })().catch((e) => {
       console.error("[RootLayout] init error:", e);
-      setReady(true);
-      SplashScreen.hideAsync().catch(() => {});
+      if (mounted) {
+        setReady(true);
+        SplashScreen.hideAsync().catch(() => {});
+      }
     });
+    return () => {
+      mounted = false;
+    };
   }, [segments, router]);
 
-  if (!ready) return null; // 가드/스플래시 중
+  if (!ready) return null; // 스플래시 숨기기 전까지 렌더 X
 
-  return <Slot />; // 하위 레이아웃/페이지 렌더링
+  return (
+    <SafeAreaProvider>
+      {/* StatusBar 배경색 prop은 빼고, SafeAreaView 배경색으로 제어 */}
+      <StatusBar style="dark" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+        <Slot />
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
 }
